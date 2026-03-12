@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:15
+    container_name: auth-db
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: auth_admin
+      POSTGRES_PASSWORD: "123456"
+      POSTGRES_DB: auth_db
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+      - ./pg-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auth_admin -d auth_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: AuthService.ApplicationApi/Dockerfile
+    container_name: auth-api
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      ConnectionStrings__MainConnectionString: "Host=db;Port=5432;Database=auth_db;Username=auth_admin;Password=123456"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  auth_db_data:
